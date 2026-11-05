@@ -228,6 +228,24 @@
                 const worksheet = workbook.Sheets[firstSheetName];
 
                 const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const weekdayDates = new Map();
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                    sheetRows.forEach(row => {
+                        row.forEach(cell => {
+                            if (typeof cell !== 'string') return;
+
+                            const weekdayMatch = cell.trim().match(
+                                /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2}\/\d{1,2}\/\d{4})$/i
+                            );
+                            if (weekdayMatch) {
+                                weekdayDates.set(weekdayMatch[1].toLowerCase(), weekdayMatch[2]);
+                            }
+                        });
+                    });
+                });
+
                 parsedData = [];
                 let activeHeaders = null;
                 let dateHeaderIndex = -1;
@@ -241,7 +259,7 @@
                     // Repeated weekday schedule headers begin a new section.
                     const dayIndex = row.findIndex(cell =>
                         typeof cell === 'string' &&
-                        /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\d{1,2}\/\d{1,2}\/\d{4}$/i.test(cell.trim())
+                        /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(\s+(?:\d{1,2}\/\d{1,2}\/\d{4}|X{2}\/X{2}\/\d{4}))$/i.test(cell.trim())
                     );
                     const isRepeatedHeader = row.some(cell =>
                         typeof cell === 'string' &&
@@ -254,7 +272,17 @@
                     if (isRepeatedHeader) {
                         activeHeaders = row;
                         dateHeaderIndex = dayIndex;
-                        extractedDate = extractDateFromHeader(row[dayIndex]);
+                        const weekdayMatch = row[dayIndex].trim().match(
+                            /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+/i
+                        );
+                        const weekday = weekdayMatch ? weekdayMatch[1].toLowerCase() : null;
+                        const headerDate = extractDateFromHeader(row[dayIndex]);
+                        extractedDate = headerDate || (weekday ? weekdayDates.get(weekday) : null);
+                        if (!extractedDate && weekday) {
+                            throw new Error(
+                                `No date found for ${weekdayMatch[1]} in workbook headers.`
+                            );
+                        }
                         mappedHeaders = row.map((header, index) =>
                             index === dateHeaderIndex ? 'Day' : header
                         ).filter(header => header !== undefined && String(header).trim() !== '');
@@ -325,6 +353,7 @@
 uploadBtn.addEventListener('click', async function() {
     const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
     const supabaseKey = document.getElementById('supabaseKey').value.trim();
+    const tableName = document.getElementById('tableName').value.trim();
 
     if (!supabaseUrl || !supabaseKey) {
         showStatus('Please fill in your Supabase credentials.', 'error');
@@ -358,6 +387,7 @@ uploadBtn.addEventListener('click', async function() {
         return normalized === 'n/a' ||
             normalized === 'na' ||
             normalized === 'find student' ||
+            normalized === 'find a student' ||
             normalized === 'participant'
             ? null
             : normalized || null;
@@ -501,7 +531,7 @@ uploadBtn.addEventListener('click', async function() {
             };
         });
 
-        showStatus('Uploading records to cpuHeaders...', 'info');
+        showStatus(`Uploading records to ${tableName}...`, 'info');
         const uploadPayload = JSON.stringify(uploadData, null, 2);
         const payloadSnippet = uploadPayload.length > 2000
             ? uploadPayload.slice(0, 2000) + `\n... (${uploadData.length} rows total)`
@@ -511,9 +541,31 @@ uploadBtn.addEventListener('click', async function() {
         console.log('Database payload JSON:\n' + uploadPayload);
         console.log('Database payload snippet:\n' + payloadSnippet);
 
+        // Replace the table contents instead of appending, so repeated uploads do not create duplicates.
+        showStatus(`Clearing existing records from ${tableName}...`, 'info');
+        const clearResponse = await fetch(
+            `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?id=not.is.null`,
+            {
+                method: 'DELETE',
+                headers: {
+                    ...supabaseHeaders,
+                    'Prefer': 'return=minimal'
+                }
+            }
+        );
+
+        if (!clearResponse.ok) {
+            throw new Error(
+                `Could not clear ${tableName} (${clearResponse.status}): ` +
+                await clearResponse.text()
+            );
+        }
+
+        showStatus(`Uploading records to ${tableName}...`, 'info');
+
         // Upload records
         const uploadResponse = await fetch(
-            `${supabaseUrl}/rest/v1/cpuHeaders`,
+            `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}`,
             {
                 method: 'POST',
                 headers: {
@@ -533,7 +585,7 @@ uploadBtn.addEventListener('click', async function() {
         }
 
         showStatus(
-            `Successfully uploaded ${uploadData.length} records to cpuHeaders!`,
+            `Successfully refreshed ${tableName} with ${uploadData.length} records!`,
             'success'
         );
 
