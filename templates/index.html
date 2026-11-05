@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>CPU Scheduler</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+        <style>
+            /* Reset */
+            * {
+                box-sizing: border-box;
+                font-family: "Segoe UI", sans-serif;
+            }
+    
+            body {
+                min-height: 100vh;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(270deg, #6a11cb, #2575fc);
+                background-size: 400% 400%;
+                animation: gradientShift 12s ease infinite;
+            }
+    
+            @keyframes gradientShift {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+    
+            .card {
+                background: rgba(255, 255, 255, 0.15);
+                backdrop-filter: blur(12px);
+                padding: 40px;
+                border-radius: 20px;
+                width: 350px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+                animation: floatIn 1s ease forwards;
+            }
+    
+            @keyframes floatIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(40px) scale(0.95);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+    
+            h1 {
+                color: #fff;
+                text-align: center;
+                margin-bottom: 30px;
+                letter-spacing: 1px;
+            }
+    
+            .field {
+                display: flex;
+                justify-content: center;
+                position: relative;
+                margin-bottom: 30px;
+                width: 100%;
+            }
+    
+            input {
+                width: 100%;
+                padding: 14px 12px;
+                border-radius: 10px;
+                border: none;
+                outline: none;
+                font-size: 16px;
+                background: rgba(255,255,255,0.85);
+            }
+    
+            label {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #666;
+                pointer-events: none;
+                transition: 0.3s ease;
+                background: transparent;
+            }
+    
+            input:focus + label,
+            input:not(:placeholder-shown) + label {
+                top: -8px;
+                font-size: 12px;
+                color: #fff;
+            }
+    
+            button {
+                width: 100%;
+                padding: 14px;
+                border-radius: 30px;
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                color: #fff;
+                background: linear-gradient(135deg, #ff512f, #dd2476);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                position: relative;
+                overflow: hidden;
+            }
+    
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            }
+    
+            button:active {
+                transform: scale(0.98);
+            }
+    
+            /* Ripple effect */
+            button::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: rgba(255,255,255,0.3);
+                opacity: 0;
+                transition: opacity 0.4s;
+            }
+    
+            button:active::after {
+                opacity: 1;
+                transition: 0s;
+            }
+    
+            .hint {
+                margin-top: 15px;
+                text-align: center;
+                font-size: 13px;
+                color: rgba(255,255,255,0.8);
+                animation: fadePulse 3s infinite;
+            }
+    
+            @keyframes fadePulse {
+                0%, 100% { opacity: 0.6; }
+                50% { opacity: 1; }
+            }
+            select {
+                margin: 10px auto;
+                width: 40%;
+                padding: 7px 6px;
+                border-radius: 5px;
+                border: none;
+                outline: none;
+                font-size: 16px;
+                background: rgba(255,255,255,0.85);
+                appearance: none;
+                cursor: pointer;
+            }
+
+            /* Floating label effect */
+            select:focus + label,
+            select:not([value=""]) + label {
+                top: -8px;
+                font-size: 12px;
+                color: #fff;
+            }
+
+            /* Custom arrow */
+            .field:has(select)::after {
+                content: "▾";
+                position: absolute;
+                right: 85px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                font-size: 16px;
+                color: #666;
+            }
+
+            /* Hover + focus glow */
+            select:hover {
+                box-shadow: 0 0 0 3px rgba(255,255,255,0.25);
+            }
+
+            select:focus {
+                box-shadow: 0 0 0 3px rgba(255,255,255,0.4);
+            }
+
+        </style>
+    </head>
+    
+    <body>
+        <div class="card">
+            <h1>✨ CPU Scheduler ✨</h1>
+    
+            <form action="/submit" method="POST">
+                
+                    <input type="text" id="name" name="name" required placeholder="Your Name">
+                    <div class="field">
+                    <select id="day" name="day">
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                    </select>
+
+
+                </div>
+    
+                <button type="submit">Send</button>
+            </form>
+
+            <div class="results">
+                {{results|safe}}
+            </div>
+    
+            <div class="hint">Go ahead — it’s fun</div>
+        </div>
+    </body>
+</html>
