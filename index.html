@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Schedule Uploader to Supabase</title>
+    <!-- SheetJS for parsing Excel files in the browser -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.75rem;
+            color: #0f172a;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        input[type="text"], input[type="url"], input[type="file"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+
+        input[type="file"] {
+            background: #f1f5f9;
+            cursor: pointer;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.875rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        #status-msg {
+            margin-top: 1rem;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success { background-color: #dcfce7; color: #166534; display: block !important; }
+        .error { background-color: #fee2e2; color: #991b1b; display: block !important; }
+        .info { background-color: #e0f2fe; color: #0369a1; display: block !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Cart Schedule Uploader (cpuHeaders)</h1>
+        <p>Upload your Excel schedule sheet to parse dates/times and sync to your <code>cpuHeaders</code> table.</p>
+
+        <!-- Supabase Configuration -->
+        <div class="form-group">
+            <label for="supabaseUrl">Supabase Project URL</label>
+            <input type="url" id="supabaseUrl" placeholder="https://your-project-id.supabase.co">
+        </div>
+        <div class="form-group">
+            <label for="supabaseKey">Supabase Anon / Service Role Key</label>
+            <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        <div class="form-group">
+            <label for="tableName">Supabase Table Name</label>
+            <input type="text" id="tableName" value="cpuHeaders" placeholder="cpuHeaders">
+        </div>
+
+        <!-- File Picker -->
+        <div class="form-group">
+            <label for="excelFile">Select Excel File (.xlsx)</label>
+            <input type="file" id="excelFile" accept=".xlsx, .xls">
+        </div>
+
+        <button id="uploadBtn" disabled>Upload to Supabase</button>
+        <div id="status-msg"></div>
+    </div>
+
+    <!-- Data Preview Card -->
+    <div class="card" id="previewCard" style="display: none;">
+        <h3>Data Preview (<span id="rowCount">0</span> rows found)</h3>
+        <div class="table-container">
+            <table id="previewTable">
+                <thead><tr id="tableHeaders"></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let parsedData = [];
+
+    const excelFileInput = document.getElementById('excelFile');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusMsg = document.getElementById('status-msg');
+    const previewCard = document.getElementById('previewCard');
+    const tableHeaders = document.getElementById('tableHeaders');
+    const tableBody = document.getElementById('tableBody');
+    const rowCountSpan = document.getElementById('rowCount');
+
+    // Extracts MM/DD/YYYY from headers like "Monday 11/02/2026"
+    function extractDateFromHeader(headerStr) {
+        const match = headerStr.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+        return match ? match[1] : null;
+    }
+
+    // Combines extracted date with Excel time value/string into ISO format
+    function formatDateTime(dateStr, timeVal) {
+        if (!dateStr) return timeVal;
+
+        let hours = 0, minutes = 0, seconds = 0;
+
+        if (typeof timeVal === 'number' && timeVal >= 0 && timeVal < 1) {
+            const totalSeconds = Math.round(timeVal * 86400);
+            hours = Math.floor(totalSeconds / 3600);
+            minutes = Math.floor((totalSeconds % 3600) / 60);
+            seconds = totalSeconds % 60;
+        } else if (typeof timeVal === 'string' && timeVal.includes(':')) {
+            const parts = timeVal.split(':');
+            hours = parseInt(parts[0], 10) || 0;
+            minutes = parseInt(parts[1], 10) || 0;
+            seconds = parseInt(parts[2], 10) || 0;
+        }
+
+        const [m, d, y] = dateStr.split('/').map(num => parseInt(num, 10));
+        
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${y}-${pad(m)}-${pad(d)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    excelFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                parsedData = [];
+                let activeHeaders = null;
+                let dateHeaderIndex = -1;
+                let extractedDate = null;
+                let mappedHeaders = null;
+
+                rawJson.forEach(row => {
+                    const hasData = row.some(cell => cell !== undefined && cell !== null && String(cell).trim() !== '');
+                    if (!hasData) return;
+
+                    // Repeated weekday schedule headers begin a new section.
+                    const dayIndex = row.findIndex(cell =>
+                        typeof cell === 'string' &&
+                        /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\d{1,2}\/\d{1,2}\/\d{4}$/i.test(cell.trim())
+                    );
+                    const isRepeatedHeader = row.some(cell =>
+                        typeof cell === 'string' &&
+                        cell.trim().toLowerCase() === 'status'
+                    ) && row.some(cell =>
+                        typeof cell === 'string' &&
+                        cell.trim().toLowerCase() === 'participant'
+                    ) && dayIndex !== -1;
+
+                    if (isRepeatedHeader) {
+                        activeHeaders = row;
+                        dateHeaderIndex = dayIndex;
+                        extractedDate = extractDateFromHeader(row[dayIndex]);
+                        mappedHeaders = row.map((header, index) =>
+                            index === dateHeaderIndex ? 'Day' : header
+                        ).filter(header => header !== undefined && String(header).trim() !== '');
+                        return;
+                    }
+
+                    if (!activeHeaders) return;
+
+                    const obj = {};
+                    activeHeaders.forEach((header, index) => {
+                        if (!header) return;
+
+                        const val = row[index] !== undefined && row[index] !== null ? row[index] : null;
+                        const cleanHeader = String(header).trim();
+
+                        if (index === dateHeaderIndex) {
+                            obj.Day = formatDateTime(extractedDate, val);
+                        } else {
+                            obj[cleanHeader] = val;
+                        }
+                    });
+
+                    // Ignore repeated title text or separator rows that have no schedule values.
+                    if (Object.keys(obj).length > 0) parsedData.push(obj);
+                });
+
+                if (!mappedHeaders || parsedData.length === 0) {
+                    throw new Error("Excel structure does not match expected schedule layout.");
+                }
+
+                displayPreview(mappedHeaders, parsedData);
+                showStatus(`Successfully parsed ${parsedData.length} records with dates from Excel.`, 'info');
+                uploadBtn.disabled = false;
+            } catch (err) {
+                console.error(err);
+                showStatus("Error parsing Excel file: " + err.message, 'error');
+                uploadBtn.disabled = true;
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function displayPreview(headers, data) {
+        tableHeaders.innerHTML = '';
+        tableBody.innerHTML = '';
+        rowCountSpan.textContent = data.length;
+
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header;
+            tableHeaders.appendChild(th);
+        });
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            headers.forEach(header => {
+                const td = document.createElement('td');
+                td.textContent = row[header] !== undefined && row[header] !== null ? row[header] : '';
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+
+        previewCard.style.display = 'block';
+    }
+
+    
+uploadBtn.addEventListener('click', async function() {
+    const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
+    const supabaseKey = document.getElementById('supabaseKey').value.trim();
+
+    if (!supabaseUrl || !supabaseKey) {
+        showStatus('Please fill in your Supabase credentials.', 'error');
+        return;
+    }
+
+    if (parsedData.length === 0) {
+        showStatus('No data to upload.', 'error');
+        return;
+    }
+
+    uploadBtn.disabled = true;
+    showStatus('Looking up participants and ambassadors...', 'info');
+
+    const supabaseHeaders = {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+    };
+
+    // Normalize names for matching
+    const normalizeName = name =>
+        String(name || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[.,]/g, '')
+            .replace(/\s+/g, ' ');
+
+    const normalizeOptionalName = name => {
+        const normalized = normalizeName(name);
+        return normalized === 'n/a' ||
+            normalized === 'na' ||
+            normalized === 'find student' ||
+            normalized === 'participant'
+            ? null
+            : normalized || null;
+    };
+
+    // Build a full name from database records
+    const fullName = person =>
+        normalizeName(`${person.firstName || ''} ${person.lastName || ''}`);
+
+    try {
+
+        /*const testUrl = `${supabaseUrl}/rest/v1/cpuClient?select=*`;
+
+        const testResponse = await fetch(testUrl, {
+            method: 'GET',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const testText = await testResponse.text();
+
+        console.log('HTTP Status:', testResponse.status);
+        console.log('Request URL:', testUrl);
+        console.log('Response Headers:', [...testResponse.headers.entries()]);
+        console.log('Response Body:', testText);*/
+
+        // Fetch all participants
+        const participantResponse = await fetch(
+            `${supabaseUrl}/rest/v1/cpuClient?select=id,firstName,lastName`,
+            { headers: supabaseHeaders }
+        );
+
+        const participantText = await participantResponse.text();
+
+        console.log('Participant response:', participantText);
+
+        if (!participantResponse.ok) {
+            throw new Error(
+                'Could not retrieve participants: ' + participantText
+            );
+        }
+
+        const participants = JSON.parse(participantText);
+
+        console.log('Participants retrieved:', participants.length);
+
+        // Fetch all users (ambassadors and backup ambassadors)
+        const userResponse = await fetch(
+            `${supabaseUrl}/rest/v1/user?select=id,firstName,lastName&limit=10000`,
+            { headers: supabaseHeaders }
+        );
+
+        const userText = await userResponse.text();
+
+        console.log('Ambassador response:', userText);
+
+        if (!userResponse.ok) {
+            throw new Error(
+                'Could not retrieve ambassadors: ' + userText
+            );
+        }
+
+        const users = JSON.parse(userText);
+
+        console.log('Ambassadors retrieved:', users.length);
+
+        // Create lookup maps
+        const participantMap = new Map(
+            participants.map(p => [fullName(p), p.id])
+        );
+
+        const userMap = new Map(
+            users.map(u => [fullName(u), u.id])
+        );
+        const userFirstNameMap = new Map();
+        users.forEach(user => {
+            const firstName = normalizeName(user.firstName);
+            if (!firstName) return;
+
+            const existing = userFirstNameMap.get(firstName);
+            if (existing === undefined) {
+                userFirstNameMap.set(firstName, user.id);
+            } else if (existing !== user.id) {
+                userFirstNameMap.set(firstName, null);
+            }
+        });
+
+        const findUserId = name => {
+            const exactId = userMap.get(name);
+            if (exactId !== undefined) return exactId;
+
+            const firstNameId = userFirstNameMap.get(name);
+            return firstNameId === null ? undefined : firstNameId;
+        };
+
+        // Convert Excel records into database records
+        const uploadData = parsedData.map((row, index) => {
+            const participantName = normalizeOptionalName(row['Participant']);
+            const ambassadorName = normalizeOptionalName(row['TAPS Ambassador']);
+            const backupName = normalizeOptionalName(row['Backup Ambassador']);
+
+            const participantId = participantMap.get(participantName);
+            const ambassadorId = ambassadorName
+                ? findUserId(ambassadorName)
+                : null;
+            const backupId = backupName
+                ? findUserId(backupName)
+                : null;
+
+            // Validate lookups
+            if (participantName && participantId === undefined) {
+                throw new Error(
+                    `Row ${index + 1}: Participant "${row['Participant']}" not found in cpuClient.`
+                );
+            }
+
+            if (ambassadorName && ambassadorId === undefined) {
+                throw new Error(
+                    `Row ${index + 1}: Ambassador "${row['TAPS Ambassador']}" not found in user.`
+                );
+            }
+
+            if (backupName && backupId === undefined) {
+                throw new Error(
+                    `Row ${index + 1}: Backup Ambassador "${row['Backup Ambassador']}" not found in user.`
+                );
+            }
+
+            return {
+                "Status": row['Status'] || null,
+                "Participant": participantId ?? null,
+                "Day": row['Day'] ? row['Day'].split('T')[0] : null,
+                "TAPS Ambassador": ambassadorId ?? null,
+                "Backup Ambassador": backupId ?? null,
+                "Pickup": row['Pickup'] || null,
+                "Dropoff": row['Dropoff'] || null,
+                "Comments": row['Comments'] || null
+            };
+        });
+
+        showStatus('Uploading records to cpuHeaders...', 'info');
+        const uploadPayload = JSON.stringify(uploadData, null, 2);
+        const payloadSnippet = uploadPayload.length > 2000
+            ? uploadPayload.slice(0, 2000) + `\n... (${uploadData.length} rows total)`
+            : uploadPayload;
+
+        console.log('Database payload being sent:', uploadData);
+        console.log('Database payload JSON:\n' + uploadPayload);
+        console.log('Database payload snippet:\n' + payloadSnippet);
+
+        // Upload records
+        const uploadResponse = await fetch(
+            `${supabaseUrl}/rest/v1/cpuHeaders`,
+            {
+                method: 'POST',
+                headers: {
+                    ...supabaseHeaders,
+                    'Prefer': 'return=minimal'
+                },
+                body: uploadPayload
+            }
+        );
+
+        if (!uploadResponse.ok) {
+            throw new Error(
+                `Supabase Error (${uploadResponse.status}): ` +
+                await uploadResponse.text() +
+                `\n\nPayload snippet being sent:\n${payloadSnippet}`
+            );
+        }
+
+        showStatus(
+            `Successfully uploaded ${uploadData.length} records to cpuHeaders!`,
+            'success'
+        );
+
+    } catch (err) {
+        console.error(err);
+        showStatus('Upload failed: ' + err.message, 'error');
+    } finally {
+        uploadBtn.disabled = false;
+    }
+});
+
+        const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
+        const supabaseKey = document.getElementById('supabaseKey').value.trim();
+        const tableName = document.getElementById('tableName').value.trim();
+
+    function showStatus(message, type) {
+        statusMsg.textContent = message;
+        statusMsg.className = type;
+    }
+</script>
+
+</body>
+</html>
