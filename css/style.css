@@ -1,0 +1,433 @@
+
+/* =================================
+   UC MERCED CPU SCHEDULER
+   University Inspired Theme
+================================= */
+
+* {
+    box-sizing: border-box;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.home-page {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+
+    background: linear-gradient(
+        135deg,
+        #003B5C,
+        #005581,
+        #092F45,
+        #003B5C
+    );
+
+    background-size: 300% 300%;
+    animation: gradientShift 12s ease infinite;
+}
+
+/* Background animation */
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Main Card */
+
+.card {
+    position: relative;
+    width: 380px;
+    max-width: 100%;
+    padding: 40px 35px;
+
+    background: rgba(255, 255, 255, 0.13);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-top: 4px solid #F2A900;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 20px 45px rgba(0, 0, 0, 0.3);
+
+    animation: floatIn 0.9s ease forwards;
+}
+
+/* Entrance Animation */
+
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translateY(35px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Heading */
+
+.home-page h1 {
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+/* University subtitle */
+
+.home-page h1::after {
+    content: "UNIVERSITY OF CALIFORNIA, MERCED";
+    display: block;
+    margin-top: 12px;
+
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-weight: 600;
+
+    color: #F2A900;
+}
+
+.home-description {
+    color: #FFFFFF;
+    text-align: center;
+    margin: 0 0 24px;
+}
+
+/* Login Form */
+
+.login-card {
+    width: 400px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-form label {
+    margin: 0 0 8px;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+    width: 100%;
+    margin: 0 0 18px;
+    padding: 13px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 9px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.16);
+    color: #FFFFFF;
+    font-size: 15px;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-form input::placeholder {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus {
+    border-color: #FFC72C;
+    background: rgba(255, 255, 255, 0.21);
+    box-shadow: 0 0 0 3px rgba(242, 169, 0, 0.18);
+}
+
+.login-options {
+    display: flex;
+    align-items: center;
+    margin: 0 0 20px;
+}
+
+.login-form .remember-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.86);
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.remember-option input {
+    width: 16px;
+    height: 16px;
+    accent-color: #F2A900;
+}
+
+.home-page .home-button {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding: 14px;
+    border-radius: 9px;
+    background: #F2A900;
+    color: #003B5C;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.home-page .home-button:hover {
+    background: #FFC72C;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+}
+
+.home-page .home-button:focus-visible {
+    outline: 3px solid #FFC72C;
+    outline-offset: 3px;
+}
+
+/* Button Ripple */
+
+.home-page .home-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.4);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.home-page .home-button:active::after {
+    opacity: 1;
+    transition: 0s;
+}
+
+/* Results Section */
+
+.home-page .results {
+    margin-top: 25px;
+    padding: 15px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #FFFFFF;
+    overflow-wrap: anywhere;
+}
+
+.home-page .results table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #FFFFFF;
+    font-size: 13px;
+}
+
+.home-page .results th {
+    padding: 10px;
+    background: #F2A900;
+    color: #003B5C;
+}
+
+.home-page .results td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+/* Hint Text */
+
+.home-page .hint {
+    margin-top: 22px;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 1px;
+    animation: fadePulse 3s infinite;
+}
+
+@keyframes fadePulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Responsive Design */
+
+@media (max-width: 480px) {
+    .home-page {
+        padding: 18px;
+    }
+
+    .home-page .card {
+        width: 100%;
+        padding: 30px 22px;
+    }
+
+    .home-page h1 {
+        font-size: 23px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Schedule Results */
+
+.schedule-page {
+    min-height: 100vh;
+    margin: 0;
+    padding: 100px 40px 80px;
+    background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+    background-size: 300% 300%;
+    animation: gradientShift 12s ease infinite;
+    color: #FFFFFF;
+}
+
+.schedule-page main {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.schedule-page h1 {
+    margin: 0 0 24px;
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 3rem;
+    letter-spacing: 2px;
+    overflow-wrap: anywhere;
+}
+
+.schedule-note {
+    margin: 0 0 28px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.day-section {
+    scroll-margin-top: 90px;
+    margin-bottom: 20px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.day-section h2 {
+    margin: 0 0 12px;
+    color: #FFC72C;
+    text-align: center;
+}
+
+.empty-state {
+    margin: 0;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.day-nav {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: 12px 16px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transform: translateX(-50%);
+}
+
+.day-nav a {
+    padding: 7px 10px;
+    border-radius: 16px;
+    color: #FFFFFF;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.day-nav a:hover,
+.day-nav a:focus-visible {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.day-nav a:focus-visible,
+.back-btn:focus-visible {
+    outline: 3px solid #FFC72C;
+    outline-offset: 3px;
+}
+
+.back-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 12px 20px;
+    border-radius: 30px;
+    background: linear-gradient(135deg, #36d1dc, #5b86e5);
+    color: #FFFFFF;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.back-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 480px) {
+    .schedule-page {
+        padding: 130px 18px 80px;
+    }
+
+    .schedule-page h1 {
+        font-size: 2rem;
+    }
+
+    .day-nav {
+        gap: 2px;
+        padding: 8px;
+    }
+
+    .day-nav a {
+        padding: 6px;
+        font-size: 0.8rem;
+    }
+}
