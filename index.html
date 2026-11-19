@@ -1,56 +1,186 @@
+
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>CPU Scheduler</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="./css/style.css">
-    </head>
-    
-    <body class="home-page">
-        <main class="card login-card">
-            <h1>CPU Scheduler</h1>
-            <p class="home-description">Sign in to access the weekly schedule.</p>
+<head>
+    <meta charset="UTF-8">
+    <title>CPU Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
 
-            <form class="login-form" id="login-form">
-                <label for="email">Email or username</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="text"
-                    autocomplete="username"
-                    placeholder="Enter your email or username"
-                    required
-                >
+<body class="home-page">
 
-                <label for="password">Password</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    placeholder="Enter your password"
-                    required
-                >
+    <main class="card login-card">
 
-                <div class="login-options">
-                    <label class="remember-option" for="remember">
-                        <input id="remember" name="remember" type="checkbox">
-                        Remember me
-                    </label>
-                </div>
+        <h1>CPU Scheduler</h1>
 
-                <button class="home-button" type="submit">Sign in</button>
-            </form>
+        <p class="home-description">
+            Sign in to access the weekly schedule.
+        </p>
 
-            <div class="hint">UC Merced CPU Scheduler</div>
-        </main>
+        <form class="login-form" id="login-form">
 
-        <script>
-            document.getElementById("login-form").addEventListener("submit", function (event) {
-                event.preventDefault();
+            <label for="email">Email</label>
+            <input
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="username"
+                placeholder="Enter your email"
+                required
+            >
+
+            <label for="password">Password</label>
+            <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Enter your password"
+                required
+            >
+
+            <div class="login-options">
+                <label class="remember-option" for="remember">
+                    <input
+                        id="remember"
+                        name="remember"
+                        type="checkbox"
+                    >
+                    Remember me
+                </label>
+            </div>
+
+            <p id="login-error" class="error-message"></p>
+
+            <button class="home-button" type="submit">
+                Sign in
+            </button>
+
+        </form>
+
+        <div class="hint">UC Merced CPU Scheduler</div>
+
+    </main>
+
+
+    <!-- SUPABASE CONNECTION -->
+    <script type="module">
+
+        import { createClient } from
+            "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+
+        // SUPABASE PROJECT CREDENTIALS
+
+        const SUPABASE_URL =
+            "https://zimfwxbztbrqpthsnzri.supabase.co";
+
+        const SUPABASE_ANON_KEY =
+            "sb_publishable_N_Er4KTU4o4GNh83hcA7wQ_zBRnuKT7";
+
+
+        // CREATE SUPABASE CLIENT
+
+        const supabase = createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+        );
+
+
+        // GET HTML ELEMENTS
+
+        const loginForm = document.getElementById("login-form");
+
+        const loginError = document.getElementById("login-error");
+
+        const loginButton = loginForm.querySelector("button");
+
+
+        // LOGIN FUNCTION
+
+        loginForm.addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+            loginError.textContent = "";
+
+            const email = document
+                .getElementById("email")
+                .value
+                .trim();
+
+            const password = document
+                .getElementById("password")
+                .value;
+
+
+            loginButton.disabled = true;
+            loginButton.textContent = "Signing in...";
+
+
+            try {
+
+                // AUTHENTICATE USER THROUGH SUPABASE
+
+                const { data, error } =
+                    await supabase.auth.signInWithPassword({
+
+                        email: email,
+
+                        password: password
+
+                    });
+
+
+                // CHECK FOR LOGIN ERRORS
+
+                if (error) {
+
+                    loginError.textContent =
+                        "Invalid email or password.";
+
+                    console.error("Login error:", error);
+
+                    return;
+
+                }
+
+
+                // LOGIN SUCCESSFUL
+
+                console.log("Successfully logged in!");
+
+                console.log("User:", data.user);
+
+                console.log("Session:", data.session);
+
+
+                // REDIRECT TO CPU SCHEDULER
+
                 window.location.href = "./day.html";
-            });
-        </script>
-    </body>
+
+
+            } catch (error) {
+
+                console.error("Unexpected error:", error);
+
+                loginError.textContent =
+                    "Something went wrong. Please try again.";
+
+
+            } finally {
+
+                loginButton.disabled = false;
+
+                loginButton.textContent = "Sign in";
+
+            }
+
+        });
+
+
+    </script>
+
+</body>
 </html>
