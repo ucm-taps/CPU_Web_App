@@ -355,6 +355,33 @@
     opacity: 0.8;
 }
 
+.schedule-items {
+    display: grid;
+    gap: 12px;
+}
+
+.schedule-item {
+    padding: 16px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.schedule-item h2 {
+    margin: 0 0 10px;
+    color: #FFC72C;
+}
+
+.schedule-item p {
+    margin: 6px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.day-nav a[aria-current="page"] {
+    background: rgba(255, 199, 44, 0.28);
+    color: #FFC72C;
+}
+
 .day-nav {
     position: fixed;
     top: 20px;
@@ -430,4 +457,11 @@
         padding: 6px;
         font-size: 0.8rem;
     }
+}
+
+.error-message {
+    color: #dc2626;
+    font-size: 14px;
+    margin: 8px 0;
+    text-align: center;
 }

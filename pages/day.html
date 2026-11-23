@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Daily Schedule</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="schedule-page">
+    <nav class="day-nav" aria-label="Select a weekday">
+        <a href="./monday.html" data-day-link="monday">Monday</a>
+        <a href="./day.html?day=tuesday" data-day-link="tuesday">Tuesday</a>
+        <a href="./day.html?day=wednesday" data-day-link="wednesday">Wednesday</a>
+        <a href="./day.html?day=thursday" data-day-link="thursday">Thursday</a>
+        <a href="./day.html?day=friday" data-day-link="friday">Friday</a>
+    </nav>
+
+    <main>
+        <h1 id="schedule-title">Daily Schedule</h1>
+        <p class="schedule-note" id="schedule-note" aria-live="polite"></p>
+        <section class="day-section" aria-labelledby="schedule-title">
+            <div class="schedule-items" id="schedule-items" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <a class="back-btn" href="../index.html">Back to home</a>
+    <script src="./js/schedule.js" defer></script>
+</body>
+</html>
