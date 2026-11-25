@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,24 +7,402 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body class="schedule-page">
+
     <nav class="day-nav" aria-label="Select a weekday">
-        <a href="./monday.html" data-day-link="monday">Monday</a>
+        <a href="./day.html?day=monday" data-day-link="monday">Monday</a>
         <a href="./day.html?day=tuesday" data-day-link="tuesday">Tuesday</a>
         <a href="./day.html?day=wednesday" data-day-link="wednesday">Wednesday</a>
         <a href="./day.html?day=thursday" data-day-link="thursday">Thursday</a>
         <a href="./day.html?day=friday" data-day-link="friday">Friday</a>
     </nav>
 
+    <div class="profile-menu" id="profile-menu">
+        <button
+            class="profile-button"
+            id="profile-button"
+            type="button"
+            aria-label="Open profile menu"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="profile-dropdown"
+        >
+            <span aria-hidden="true">P</span>
+        </button>
+        <div class="profile-dropdown" id="profile-dropdown" aria-labelledby="profile-button" hidden>
+            <p id="profile-account-status">Checking account...</p>
+            <a id="admin-view-link" href="./admin.html" hidden>Admin view</a>
+            <a id="sign-in-link" href="../index.html" hidden>Sign in</a>
+        </div>
+    </div>
+
     <main>
         <h1 id="schedule-title">Daily Schedule</h1>
-        <p class="schedule-note" id="schedule-note" aria-live="polite"></p>
+
+        <p class="schedule-note" id="schedule-note" aria-live="polite">
+            Loading schedule...
+        </p>
+
         <section class="day-section" aria-labelledby="schedule-title">
-            <div class="schedule-items" id="schedule-items" aria-live="polite"></div>
+            <div class="schedule-items" id="schedule-items" aria-live="polite">
+            </div>
         </section>
     </main>
 
     <a class="back-btn" href="../index.html">Back to home</a>
-    <script src="./js/schedule.js" defer></script>
+
+    <!-- SUPABASE CONNECTION -->
+    <script type="module">
+
+        
+        import { createClient } from
+            "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+        const SUPABASE_URL =
+            "https://zimfwxbztbrqpthsnzri.supabase.co";
+
+        const SUPABASE_ANON_KEY =
+            "sb_publishable_N_Er4KTU4o4GNh83hcA7wQ_zBRnuKT7";
+
+        const supabase = createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+        );
+
+        // HTML ELEMENTS
+
+        const scheduleItems =
+            document.getElementById("schedule-items");
+
+        const scheduleNote =
+            document.getElementById("schedule-note");
+
+        const scheduleTitle =
+            document.getElementById("schedule-title");
+
+        // SELECTED WEEKDAY
+
+        const weekdays = [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday"
+        ];
+
+        const params = new URLSearchParams(window.location.search);
+
+        const todayIndex = new Date().getDay();
+
+        const defaultDay =
+            todayIndex >= 1 && todayIndex <= 5
+                ? weekdays[todayIndex - 1]
+                : "monday";
+
+        const selectedDay =
+            (params.get("day") || defaultDay).toLowerCase();
+
+        if (!weekdays.includes(selectedDay)) {
+            scheduleNote.textContent = "Invalid weekday selected.";
+            throw new Error("Invalid weekday");
+        }
+
+        // HIGHLIGHT SELECTED DAY
+
+        document.querySelectorAll("[data-day-link]").forEach(link => {
+
+            if (link.dataset.dayLink === selectedDay) {
+                link.setAttribute("aria-current", "page");
+            }
+
+        });
+
+        scheduleTitle.textContent =
+            selectedDay.charAt(0).toUpperCase() +
+            selectedDay.slice(1) +
+            " Schedule";
+
+        // GET DATE FOR SELECTED WEEKDAY
+
+        function getWeekdayDates(dayName) {
+
+            const today = new Date();
+            const dayIndex = today.getDay();
+
+            const mondayOffset =
+                dayIndex === 0 ? -6 : 1 - dayIndex;
+
+            const monday = new Date(today);
+
+            monday.setDate(today.getDate() + mondayOffset);
+
+            const offsets = {
+                monday: 0,
+                tuesday: 1,
+                wednesday: 2,
+                thursday: 3,
+                friday: 4
+            };
+
+            const target = new Date(monday);
+
+            target.setDate(
+                monday.getDate() + offsets[dayName]
+            );
+
+            const year = target.getFullYear();
+            const month = String(target.getMonth() + 1).padStart(2, "0");
+            const date = String(target.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${date}`;
+        }
+
+        // GET AMBASSADOR ASSIGNMENTS
+
+        function getAmbassadorAssignments(column, userId, targetDate) {
+
+            return supabase
+                .from("cpuHeaders")
+                .select(`
+                    id,
+                    Status,
+                    Day,
+                    Comments,
+                    participant:cpuClient!cpuHeaders_Participant_fkey (
+                        firstName,
+                        lastName
+                    ),
+                    pickupLocation:location!cpuHeaders_Pickup_fkey (
+                        loc_name
+                    ),
+                    dropoffLocation:location!cpuHeaders_Dropoff_fkey (
+                        loc_name
+                    )
+                `)
+                .eq("Day", targetDate)
+                .eq(column, userId)
+                .order("id");
+
+        }
+
+        // CREATE SAFE TEXT ELEMENT
+
+        function createParagraph(label, value) {
+
+            const paragraph = document.createElement("p");
+            const strong = document.createElement("strong");
+
+            strong.textContent = label + ": ";
+
+            paragraph.appendChild(strong);
+            paragraph.appendChild(
+                document.createTextNode(value ?? "None")
+            );
+
+            return paragraph;
+        }
+
+        // LOAD SCHEDULE
+
+        async function loadSchedule() {
+
+            scheduleItems.innerHTML = "";
+            scheduleNote.textContent = "Loading schedule...";
+
+            try {
+
+                // STEP 1: CHECK AUTHENTICATION
+
+                const { data: authData, error: authError } =
+                    await supabase.auth.getUser();
+
+                if (authError) throw authError;
+
+                if (!authData.user) {
+
+                    scheduleNote.textContent =
+                        "Please sign in to view your assignments.";
+
+                    window.location.href = "../index.html";
+                    return;
+
+                }
+
+                // STEP 2: IDENTIFY CPU USER BY EMAIL
+
+                const authenticatedEmail =
+                    authData.user.email?.trim().toLowerCase();
+
+                if (!authenticatedEmail) {
+                    throw new Error("Authenticated account has no email.");
+                }
+
+                const { data: cpuUser, error: cpuUserError } =
+                    await supabase
+                        .from("user")
+                        .select("id, username, firstName, lastName, admin, email")
+                        .eq("email", authenticatedEmail)
+                        .maybeSingle();
+
+                if (cpuUserError) throw cpuUserError;
+
+                if (!cpuUser) {
+
+                    scheduleNote.textContent =
+                        "Your account was not found in the CPU database.";
+
+                    await supabase.auth.signOut();
+
+                    window.location.href = "../index.html";
+                    return;
+
+                }
+
+                // STEP 3: GET THE CPU DATABASE ID
+
+                const cpuUserId = cpuUser.id;
+
+                console.log("Authenticated user:", authenticatedEmail);
+                console.log("CPU user:", cpuUser);
+                console.log("CPU user ID:", cpuUserId);
+
+                // STEP 4: GET SELECTED DATE
+
+                const targetDate = getWeekdayDates(selectedDay);
+
+                // STEP 5: GET PRIMARY AND BACKUP ASSIGNMENTS
+
+                const [primaryResult, backupResult] = await Promise.all([
+
+                    getAmbassadorAssignments(
+                        "TAPS Ambassador",
+                        cpuUserId,
+                        targetDate
+                    ),
+
+                    getAmbassadorAssignments(
+                        "Backup Ambassador",
+                        cpuUserId,
+                        targetDate
+                    )
+
+                ]);
+
+                if (primaryResult.error) throw primaryResult.error;
+                if (backupResult.error) throw backupResult.error;
+
+                // STEP 6: COMBINE ASSIGNMENTS
+
+                const assignmentsById = new Map();
+
+                primaryResult.data.forEach(entry => {
+
+                    assignmentsById.set(entry.id, {
+                        entry,
+                        roles: ["TAPS Ambassador"]
+                    });
+
+                });
+
+                backupResult.data.forEach(entry => {
+
+                    const existing = assignmentsById.get(entry.id);
+
+                    if (existing) {
+
+                        existing.roles.push("Backup Ambassador");
+
+                    } else {
+
+                        assignmentsById.set(entry.id, {
+                            entry,
+                            roles: ["Backup Ambassador"]
+                        });
+
+                    }
+
+                });
+
+                const assignments = [...assignmentsById.values()];
+
+                // STEP 7: DISPLAY EMPTY STATE
+
+                if (assignments.length === 0) {
+
+                    scheduleNote.textContent =
+                        `You have no assignments for ${selectedDay}.`;
+
+                    return;
+
+                }
+
+                scheduleNote.textContent =
+                    `${assignments.length} assignments for ${selectedDay}.`;
+
+                // STEP 8: DISPLAY ASSIGNMENTS
+
+                assignments.forEach(({ entry, roles }) => {
+
+                    const card = document.createElement("article");
+
+                    card.className = "schedule-card";
+
+                    const participant = entry.participant
+                        ? `${entry.participant.firstName || ""} ${entry.participant.lastName || ""}`.trim()
+                        : "Not assigned";
+
+                    const pickup =
+                        entry.pickupLocation?.loc_name || "Not assigned";
+
+                    const dropoff =
+                        entry.dropoffLocation?.loc_name || "Not assigned";
+
+                    const heading = document.createElement("h2");
+
+                    heading.textContent = participant || "Not assigned";
+
+                    card.appendChild(heading);
+
+                    card.appendChild(createParagraph("Day", entry.Day));
+
+                    card.appendChild(
+                        createParagraph("Status", entry.Status || "Not specified")
+                    );
+
+                    card.appendChild(
+                        createParagraph("Assigned as", roles.join(" and "))
+                    );
+
+                    card.appendChild(createParagraph("Pickup", pickup));
+
+                    card.appendChild(createParagraph("Dropoff", dropoff));
+
+                    card.appendChild(
+                        createParagraph("Comments", entry.Comments || "None")
+                    );
+
+                    scheduleItems.appendChild(card);
+
+                });
+
+            } catch (error) {
+
+                console.error("Assignment loading error:", error);
+
+                scheduleNote.textContent =
+                    "Unable to load your assignments. Please try again.";
+
+            }
+
+        }
+
+        // RUN
+
+        loadSchedule();
+
+
+    </script>
+
 </body>
 </html>
